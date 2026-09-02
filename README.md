@@ -75,10 +75,27 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 2. `app/src/main/java/com/example/myapp/AgentClient.kt`와 `MainActivity.kt`의 `SERVER`/`BASE_URL`을 서버 주소로 수정 (에뮬레이터는 기본값 `http://10.0.2.2:8000` 유지)
 3. 빌드 및 실행
 
-## 팀 및 지도
+## 본인 기여
 
-- 3인 팀 프로젝트로 진행했으며, 본인은 팀 리더는 아니었지만 서버(FastAPI 에이전트)와 안드로이드 클라이언트 구현의 상당 부분을 담당했다.
-- 지도교수: 이선재 교수님
+3인 팀 프로젝트였고, 팀 리더는 아니었지만 서버와 안드로이드 클라이언트 구현의 상당 부분을 담당했다. 지도교수는 이선재 교수님.
+
+### 서버 (FastAPI 기반 GPT 에이전트)
+- `GPTAgent.process()`: 사용자 발화를 GPT로 1차 분석해 `tool_call`(도구 실행) / `chat`(일반 대화)으로 분기하는 판단 로직 구현
+- **계층적 메모리 기능**: 대화 3턴마다 자동 요약하고, 요약이 3개 쌓이면 "요약의 요약"으로 재압축해 컨텍스트 길이를 관리하는 `MemoryAgent` 설계·구현
+- **명령 큐 방식**의 앱 실행 아키텍처 설계: 서버는 실행 명령을 device_id별 큐에 적재만 하고, 안드로이드가 주기적으로 폴링해서 가져가는 구조 (`ToolAgent.push_cmd`/`pop_cmds`, `MobileAgent.handle`)
+- SSE(Server-Sent Events) 방식 스트리밍 응답 구현 (`/chat` 엔드포인트)
+- 실행 가능/실행 불가 앱 목록을 기기별로 등록·관리하는 `/register_apps` API 설계
+
+### 안드로이드 클라이언트 (Kotlin, Jetpack Compose)
+- Compose 기반 채팅 UI(`ChatScreen`), Retrofit + Moshi + OkHttp(SSE)로 서버 통신 계층 구현
+- **Android 14(API 34)+ 대응**: `FOREGROUND_SERVICE_DATA_SYNC` 런타임 권한을 명시적으로 요청·처리한 뒤 포그라운드 서비스를 기동하도록 예외 케이스 분기 처리
+- `CommandService`: 포그라운드 서비스로 앱 실행 중 5초 주기로 서버에 명령을 폴링하고, 최초 실행 시 설치 앱 목록을 업로드하는 백그라운드 루프 구현
+- `PackageChangeReceiver`: `PACKAGE_ADDED`/`PACKAGE_REMOVED` 브로드캐스트를 수신해 앱 설치·제거 시 자동으로 앱 목록을 재동기화
+- `AgentClient`: 런처 아이콘 노출 여부를 기준으로 실행 가능/불가 앱을 분류해 서버에 등록하고, 서버가 내려준 명령을 패키지명으로 실제 앱 실행에 매핑
+
+### 그 외 진행한 작업 (월간보고서 기준)
+- Flask 기반 서버 → FastAPI 전환, multi-agent 오케스트레이션 구조 검토
+- llamatouch / GUI-META / AndroidWorld 데이터셋의 instruction-action 일치 여부 검토 및 선별 (8월)
 
 ## 참고
 
